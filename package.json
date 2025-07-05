@@ -1,0 +1,27 @@
+{
+  "name": "project-aventurine",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev:server": "pnpm --filter aventurine-server run dev",
+    "dev:front": "pnpm --filter aventurine-front run dev",
+    "dev": "concurrently \"pnpm dev:server\" \"pnpm dev:front\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.12.4",
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
+}
