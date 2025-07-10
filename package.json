@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:server": "pnpm --filter aventurine-server run test",
+    "test": "pnpm test:server",
     "dev:server": "pnpm --filter aventurine-server run dev",
     "dev:front": "pnpm --filter aventurine-front run dev",
     "dev": "concurrently \"pnpm dev:server\" \"pnpm dev:front\""
@@ -19,6 +20,7 @@
     "concurrently": "^9.2.0",
     "express": "^5.1.0",
     "jest": "^30.0.4",
+    "nodemon": "^3.1.10",
     "serialport": "^13.0.0",
     "ts-jest": "^29.4.0"
   },

@@ -5,7 +5,7 @@
   "main": "./src/index.ts",
   "scripts": {
     "test": "jest",
-    "dev": "ts-node ."
+    "dev": "nodemon"
   },
   "keywords": [],
   "author": "",
