@@ -18,7 +18,7 @@ const data = {
   transaction_header_pk: transaction_head.pk,
   product_id: product.id,
   quantity: 1,
-  price: 10,
+  total: 10,
 };
 
 beforeAll(async () => {

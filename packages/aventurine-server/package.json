@@ -5,7 +5,8 @@
   "main": "./src/index.ts",
   "scripts": {
     "test": "jest",
-    "dev": "nodemon"
+    "dev": "nodemon",
+    "migrate": "prisma dev migrate --schema ./src/database/schema.prisma"
   },
   "keywords": [],
   "author": "",
