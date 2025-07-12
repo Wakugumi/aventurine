@@ -1,16 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-export const transactionHeaderRepository = {
-  create: (data: any) => prisma.transactionHeader.create({ data }),
-  findAll: () =>
-    prisma.transactionHeader.findMany({ include: { details: true } }),
-  findById: (pk: number) =>
-    prisma.transactionHeader.findUnique({
-      where: { pk },
-      include: { details: true },
-    }),
-  update: (pk: number, data: any) =>
-    prisma.transactionHeader.update({ where: { pk }, data }),
-  delete: (pk: number) => prisma.transactionHeader.delete({ where: { pk } }),
+export const transactionDetailRepository = {
+  create: (data: any) => prisma.transactionDetail.create({ data }),
+  findAll: () => prisma.transactionDetail.findMany(),
+  findById: (id: number) => prisma.transactionDetail.findUnique({ where: { id } }),
+  update: (id: number, data: any) =>
+    prisma.transactionDetail.update({ where: { id }, data }),
+  delete: (id: number) => prisma.transactionDetail.delete({ where: { id } }),
 };
