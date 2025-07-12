@@ -6,7 +6,8 @@
   "scripts": {
     "test": "jest",
     "dev": "nodemon",
-    "migrate": "prisma dev migrate --schema ./src/database/schema.prisma"
+    "migrate": "prisma dev migrate --schema ./src/database/schema.prisma",
+    "generate": "primsa generate --schema ./src/database/schema.prisma"
   },
   "keywords": [],
   "author": "",
