@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { transactionHeaderRepository } from "../tranasactionHeaderRepository";
+import { transactionHeaderRepository } from "../transactionHeaderRepository";
 import { randomUUID } from "crypto";
 
 const prisma = new PrismaClient();
@@ -16,6 +16,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await prisma.transactionHeader.deleteMany();
   await prisma.$disconnect();
 });
 
