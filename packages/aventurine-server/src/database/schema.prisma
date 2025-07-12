@@ -47,7 +47,7 @@ model TransactionDetail {
   transaction_header_pk Int
   product_id            Int
   quantity              Int
-  price                 Float
+  total                 Float
   transactionHeader     TransactionHeader @relation(fields: [transaction_header_pk], references: [pk])
   product               Product           @relation(fields: [product_id], references: [id])
 }
