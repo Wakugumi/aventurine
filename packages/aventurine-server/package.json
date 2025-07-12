@@ -7,7 +7,7 @@
     "test": "jest",
     "dev": "nodemon",
     "migrate": "prisma dev migrate --schema ./src/database/schema.prisma",
-    "generate": "primsa generate --schema ./src/database/schema.prisma"
+    "generate": "prisma generate --schema ./src/database/schema.prisma"
   },
   "keywords": [],
   "author": "",
