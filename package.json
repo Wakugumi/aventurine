@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "postinstall": "pnpm --filter aventurine-server run generate",
     "test:server": "pnpm --filter aventurine-server run test",
     "test": "pnpm test:server",
     "dev:server": "pnpm --filter aventurine-server run dev",
@@ -15,6 +16,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.12.4",
   "dependencies": {
+    "@prisma/client": "^6.11.1",
     "@types/escpos": "^2.5.5",
     "@types/jest": "^30.0.0",
     "concurrently": "^9.2.0",
@@ -22,7 +24,8 @@
     "jest": "^30.0.4",
     "nodemon": "^3.1.10",
     "serialport": "^13.0.0",
-    "ts-jest": "^29.4.0"
+    "ts-jest": "^29.4.0",
+    "zod": "^4.0.2"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
