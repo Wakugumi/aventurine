@@ -11,7 +11,10 @@ import {
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AssignUserStoreDto } from './dtos/assign-user-store.dto';
-import { UserStoreException } from './exceptions/user-store.exception';
+import {
+  UserStoreException,
+  UserStoreExceptionCode,
+} from './exceptions/user-store.exception';
 
 describe('UserStore Service', () => {
   let user: User;
@@ -92,5 +95,48 @@ describe('UserStore Service', () => {
     repoMock.findOne?.mockReturnValueOnce(undefined);
 
     await expect(service.updateRole(update)).rejects.toThrow();
+  });
+
+  it('Should throw when updating a user with an unregistered role object', async () => {
+    const existing: Partial<UserStore> = {
+      userId: '1',
+      storeId: '1',
+      role: RolePermissions.owner.label,
+    };
+    const update = {
+      role: 'bruh',
+    };
+    repoMock.findOne?.mockReturnValue(existing as UserStore);
+    expect.assertions(2);
+    try {
+      await service.updateRole(update);
+    } catch (error) {
+      expect(error).toBeInstanceOf(UserStoreException);
+      expect((error as UserStoreException).code).toBe(
+        UserStoreExceptionCode.INVALID_ROLE,
+      );
+    }
+  });
+
+  it('Should throw when updating user without the role data', async () => {
+    const existing: Partial<UserStore> = {
+      userId: '1',
+      storeId: '1',
+      role: RolePermissions.owner.label,
+    };
+    const update = {
+      role: undefined,
+    };
+    repoMock.findOne?.mockReturnValue(existing as UserStore);
+    expect.assertions(2);
+
+    try {
+      await service.updateRole(update);
+    } catch (error) {
+      expect(error).toBeInstanceOf(UserStoreException);
+      expect((error as UserStoreException).code).toBe(
+        UserStoreExceptionCode.INVALID_ROLE,
+      );
+    }
   });
 });
