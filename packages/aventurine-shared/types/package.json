@@ -1,0 +1,4 @@
+{
+  "main": "dist/aventurine-shared-types.cjs.js",
+  "module": "dist/aventurine-shared-types.esm.js"
+}

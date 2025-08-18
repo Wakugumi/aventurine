@@ -1,0 +1,34 @@
+{
+  "name": "aventurine-shared",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "main": "dist/aventurine-shared.cjs.js",
+  "module": "dist/aventurine-shared.esm.js",
+  "license": "AGPL-3.0",
+  "private": true,
+  "scripts": {
+    "build": "preconstruct build"
+  },
+  "preconstruct": {
+    "tsconfig": "tsconfig.lib.json",
+    "entrypoints": [
+      "./index.ts",
+      "./constants/index.ts",
+      "./testing/index.ts",
+      "./translations/index.ts",
+      "./types/index.ts",
+      "./utils/index.ts",
+      "./workspace/index.ts"
+    ]
+  },
+  "files": [
+    "dist",
+    "constants",
+    "testing",
+    "translations",
+    "types",
+    "utils",
+    "workspace"
+  ]
+}
