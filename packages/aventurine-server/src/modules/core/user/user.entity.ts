@@ -30,6 +30,9 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true })
   avatar?: string;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  lastUpdateAvatar?: Date | null;
+
   @Column({ type: 'timestamp', nullable: true })
   createdAt?: Date;
 
@@ -40,8 +43,11 @@ export class User {
   updatedAt?: Date;
 
   @OneToMany(() => UserStore, (store) => store.user)
-  userStores: Relation<UserStore>;
+  userStores?: Relation<UserStore>;
 
-  @Column({ type: 'boolean' })
+  @Column({ type: 'boolean', default: true })
   isOwner: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  isEmailVerified: boolean;
 }

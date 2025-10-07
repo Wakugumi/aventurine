@@ -5,6 +5,7 @@ import {
   ManyToOne,
   OneToMany,
   Index,
+  JoinColumn,
 } from 'typeorm';
 import { Store } from '../store/store.entity';
 import { MenuItemGroup } from './menu-item-group.entity';
@@ -30,7 +31,11 @@ export class Menu {
   @Column({ type: 'timestamp', nullable: true })
   deletedAt?: Date;
 
+  @Column()
+  storeId: string;
+
   @ManyToOne(() => Store, (store) => store.menus)
+  @JoinColumn({ name: 'storeId' })
   store: Store;
 
   @OneToMany(() => MenuItemGroup, (group) => group.menu)

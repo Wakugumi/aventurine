@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
 import { AppService } from './app.service';
-import { CaslModule } from './engine/casl/casl.module';
-import { AuthModule } from './auth/auth.module';
-import { AuthModule } from './auth/auth.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { EngineModule } from './engine/engine.module';
 
 @Module({
-  imports: [CaslModule, AuthModule],
-  controllers: [AppController],
+  imports: [EngineModule, AuthModule],
   providers: [AppService],
 })
 export class AppModule {}

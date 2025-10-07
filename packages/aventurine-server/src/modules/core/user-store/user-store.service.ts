@@ -8,6 +8,7 @@ import {
   UserStoreExceptionCode,
 } from './exceptions/user-store.exception';
 import { RolePermissions } from 'src/engine/access-control/roles/roles.config';
+import { isDefined, isEmpty } from 'class-validator';
 
 @Injectable()
 export class UserStoreService {
@@ -49,5 +50,19 @@ export class UserStoreService {
 
     user.role = dto.role as string;
     return this.userStoreRepo.save(user);
+  }
+
+  async findByStore(storeId: string): Promise<UserStore[]> {
+    const userStore = await this.userStoreRepo.findBy({
+      storeId: storeId,
+    });
+
+    if (!isDefined(userStore) || !isEmpty(userStore))
+      throw new UserStoreException(
+        'No user found in this store',
+        UserStoreExceptionCode.USER_STORE_NOT_EXIST,
+      );
+
+    return userStore;
   }
 }

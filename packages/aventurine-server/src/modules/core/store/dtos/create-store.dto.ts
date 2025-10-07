@@ -14,10 +14,6 @@ export class CreateStoreDto {
 
   @IsOptional()
   @IsString()
-  logo?: string;
-
-  @IsOptional()
-  @IsString()
   address?: string;
 
   @IsOptional()
