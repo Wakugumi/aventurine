@@ -27,27 +27,24 @@ export class AzureDriver implements StorageDriver {
   private sharedKeyCredential?: StorageSharedKeyCredential;
 
   constructor(options: AzureBlobOptions) {
-    this.options = options;
-
-    // Use connection string if provided, otherwise use managed identity
-    if (options.connectionString) {
-      this.client = new BlobServiceClient(options.connectionString);
-    } else {
-      this.client = new BlobServiceClient(
-        `https://${options.accountName}.blob.core.windows.net`,
-        new DefaultAzureCredential(),
-      );
+    if (!options.accountKey) {
+      throw new StorageException(
+        "Only support authenticate with account key, usually paired with account name",
+        StorageExceptionCode.INVALID_CONFIGURATION
+      )
     }
+    this.options = options;
+    this.sharedKeyCredential = new StorageSharedKeyCredential(
+      options.accountName, options.accountKey!
+    )
+
+
+    this.client = new BlobServiceClient(
+      `https://${options.accountName}.blob.core.windows.net`,
+      this.sharedKeyCredential
+    );
 
     this.container = this.client.getContainerClient(options.container);
-
-    // Initialize shared key credential for SAS token generation
-    if (options.accountKey) {
-      this.sharedKeyCredential = new StorageSharedKeyCredential(
-        options.accountName,
-        options.accountKey,
-      );
-    }
   }
 
   async checkFileExists(params: {

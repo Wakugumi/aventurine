@@ -33,8 +33,8 @@ export interface UploadOptions {
 }
 
 export enum StorageDriverOptions {
-  LOCAL = 'local',
-  AZURE = 'azure',
+  LOCAL = 'LOCAL',
+  AZURE = 'AZURE',
 }
 
 /** Per-driver option shapes */

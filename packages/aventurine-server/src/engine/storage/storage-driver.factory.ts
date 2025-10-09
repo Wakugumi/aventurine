@@ -6,13 +6,17 @@ import { LocalDriver } from './drivers/local.driver';
 import { StorageDriver } from './types/storage-driver.interface';
 import { StorageDriverOptions } from './types/storage.types';
 import { AzureDriver } from './drivers/azure.driver';
+import { Injectable } from '@nestjs/common';
 
+@Injectable()
 export class StorageDriverFactory extends DynamicFactoryBase<StorageDriver> {
   constructor(configService: AventurineConfigService) {
     super(configService);
   }
 
   protected buildConfigKey(): string {
+
+
     const storageType = this.configService.get('STORAGE_TYPE');
 
     if (storageType == StorageDriverOptions.LOCAL) {
