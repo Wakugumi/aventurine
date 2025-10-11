@@ -30,7 +30,7 @@ export class Store {
 
   @Field({ description: 'The address of the store' })
   @Column({ type: 'varchar', default: '' })
-  address: string;
+  address?: string | null
 
   @Field({ description: 'The contact phone of the store', nullable: true })
   @Column({ type: 'varchar', nullable: true })

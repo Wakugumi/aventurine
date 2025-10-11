@@ -15,17 +15,17 @@
  * Written by Ananda Risyad (https://github.com/Wakugumi)
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
-import { RequestUpdateAvatarDto } from './dtos/request-update-avatar.dto';
 import { UserException, UserExceptionCode } from './user.exception';
 import { AventurineConfigService } from 'src/engine/aventurine-config/aventurine-config.service';
 import { StorageService } from 'src/engine/storage/services/storage.service';
 import { StoragePath } from 'src/engine/storage/utils/storage-path.util';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -34,7 +34,7 @@ export class UserService {
     private readonly userRepository: Repository<User>,
     private readonly configService: AventurineConfigService,
     private readonly storageService: StorageService,
-  ) {}
+  ) { }
 
   /**
    * Return all object of User record(s)
@@ -89,5 +89,9 @@ export class UserService {
       StoragePath.userAvatar(userId),
       `avatar_${userId}`,
     );
+  }
+
+  async generateHash(password: string) {
+    const isValid = PASSWORD_REG
   }
 }

@@ -5,6 +5,7 @@ import {
   Index,
   OneToMany,
   Relation,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { UserStore } from '../user-store/user-store.entity';
 
@@ -12,14 +13,17 @@ import { UserStore } from '../user-store/user-store.entity';
 @Index('UQ_USER_USERNAME', ['username'], { unique: true })
 @Index('UQ_USER_EMAIL', ['email'], { unique: true })
 export class User {
-  @PrimaryColumn({ type: 'char', length: 255 })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ type: 'varchar', length: 255 })
   username: string;
 
   @Column({ type: 'varchar', length: 255 })
-  fullName: string;
+  firstName: string;
+
+  @Column({ type: 'varchar', length: 255 })
+  lastName: string;
 
   @Column({ type: 'varchar', length: 255 })
   email: string;

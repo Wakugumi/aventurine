@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-Store;
 import { Store } from './store.entity';
 import { Repository } from 'typeorm';
 import { CreateStoreDto } from './dtos/create-store.dto';
@@ -11,7 +10,7 @@ export class StoreService {
   constructor(
     @InjectRepository(Store)
     private readonly storeRepository: Repository<Store>,
-  ) {}
+  ) { }
 
   create(createStoreDto: CreateStoreDto) {
     const store = this.storeRepository.create(createStoreDto);

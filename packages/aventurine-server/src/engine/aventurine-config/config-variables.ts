@@ -52,7 +52,6 @@ export class ConfigVariables {
   LOGGER_DRIVER: LoggerDriverType = LoggerDriverType.CONSOLE;
 
   // Server Config
-
   @ConfigVariablesMetadata({
     group: ConfigVariablesGroup.ServerConfig,
     isSensitive: true,
@@ -68,6 +67,64 @@ export class ConfigVariables {
     require_host: false,
   })
   DATABASE_URL: string;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ServerConfig,
+    description: 'Database host url',
+    type: ConfigVariableType.STRING,
+    isEnvOnly: true,
+  })
+  @IsOptional()
+  DATABASE_HOST: string = 'localhost';
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ServerConfig,
+    description: 'Database port',
+    type: ConfigVariableType.NUMBER,
+    isEnvOnly: true,
+  })
+  @CastToPositiveNumber()
+  @IsOptional()
+  DATABASE_PORT: number = 5432;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ServerConfig,
+    description: 'Database name',
+    type: ConfigVariableType.STRING,
+    isEnvOnly: true,
+  })
+  @IsDefined()
+  DATABASE_NAME: string;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ServerConfig,
+    description: 'Database user',
+    type: ConfigVariableType.STRING,
+    isEnvOnly: true,
+  })
+  @IsDefined()
+  DATABASE_USER: string;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ServerConfig,
+    isSensitive: true,
+    description: 'Database password',
+    type: ConfigVariableType.STRING,
+    isEnvOnly: true,
+  })
+  @IsDefined()
+  DATABASE_PASSWORD: string = '';
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.ServerConfig,
+    description:
+      'Enable SSL connection to the database (required by some hosting providers)',
+    isEnvOnly: true,
+    type: ConfigVariableType.BOOLEAN,
+  })
+  @IsOptional()
+  DATABASE_SSL = false;
+
 
   @ConfigVariablesMetadata({
     group: ConfigVariablesGroup.ServerConfig,
