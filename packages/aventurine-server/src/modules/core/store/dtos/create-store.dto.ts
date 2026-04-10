@@ -2,10 +2,6 @@ import { IsOptional, IsString, Length } from 'class-validator';
 export class CreateStoreDto {
   @IsString()
   @Length(1, 255)
-  id: string;
-
-  @IsString()
-  @Length(1, 255)
   label: string;
 
   @IsOptional()

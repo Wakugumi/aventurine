@@ -1,17 +1,21 @@
 import {
   Column,
   Entity,
+  Index,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   Relation,
 } from 'typeorm';
-import { UserStore } from '../user-store/user-store.entity';
 import { Field, ObjectType } from '@nestjs/graphql';
-import { Menu } from '../menu/menu.entity';
+import { ApiKey } from 'src/engine/api-key/api-key.entity';
+import { User } from '../user/user.entity';
+import { Menu } from 'src/modules/menu/entities/menu.entity';
 
 @ObjectType('Store')
 @Entity({ name: 'store' })
+@Index('UQ_STORE_LABEL', ['label'], { unique: true })
+@Index('IDX_STORE_LABEL_OWNER', ['label', 'ownerId'])
 export class Store {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -40,12 +44,16 @@ export class Store {
   @Column({ type: 'varchar', nullable: true })
   contactEmail?: string | null;
 
-  @OneToMany(() => UserStore, (userStore) => userStore.store, {
-    onDelete: 'CASCADE',
-  })
-  userStores: Relation<UserStore>;
+  @Column({ type: "uuid" })
+  ownerId: string;
+
+  @ManyToOne(() => User, (user) => user.stores)
+  owner: Relation<User>;
 
   @Field({ description: 'Menu that is applied to this store' })
   @OneToMany(() => Menu, (menu) => menu.store, { onDelete: 'SET NULL' })
-  menus: Relation<Menu>;
+  menus: Relation<Menu[]>;
+
+  @OneToMany(() => ApiKey, (apiKey) => apiKey.store)
+  apiKeys: Relation<ApiKey[]>;
 }
