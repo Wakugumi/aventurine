@@ -30,7 +30,7 @@ export class PriceController {
   @ApiBody({ type: CreatePriceDto })
   async create(@Body() payload: CreatePriceDto, @CurrentUser() user: User) {
     return await this.commandBus.execute<CreatePriceCommand>(
-      new CreatePriceCommand(payload.productId, user.id, payload.label, payload.currencyCode as CurrencyCode, payload.unitAmount, undefined, payload.displayLabel)
+      new CreatePriceCommand(payload.productId, user.id, payload.label, payload.currencyCode as CurrencyCode, payload.amount, payload.displayLabel)
     )
 
   }

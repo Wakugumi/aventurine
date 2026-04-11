@@ -12,8 +12,7 @@ export class CreatePriceHandler implements ICommandHandler<CreatePriceCommand> {
       productId: command.productId,
       currencyCode: command.currencyCode,
       label: command.label,
-      unitAmount: command.unitAmount,
-      unitAmountDecimal: command.unitAmountDecimal,
+      amount: command.amount,
       displayLabel: command.displayLabel ?? command.label,
       ownerId: command.ownerId
 

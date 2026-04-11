@@ -8,8 +8,7 @@ export class CreatePriceCommand extends Command<Price> {
     public readonly ownerId: string,
     public readonly label: string,
     public readonly currencyCode: CurrencyCode,
-    public readonly unitAmount: number,
-    public readonly unitAmountDecimal?: string,
+    public readonly amount: number,
     public readonly displayLabel?: string,
 
   ) { super() }
