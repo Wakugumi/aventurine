@@ -1,38 +1,47 @@
 import { Readable } from 'stream';
-import { ContentTypes } from './storage.types';
+import { ContentTypes, SignedUrlResult } from './storage.types';
 
-export interface StorageDriver {
-  delete(params: { folderPath: string; filename?: string }): Promise<void>;
+export interface StorageDriver<TRead = Readable, TDelete = void, TWrite = void, TMove = void, TCopy = void, TDownload = void, TSignUrl = SignedUrlResult, TUrl = string> {
+  delete(params: { key: string }): Promise<TDelete>;
+
   read(params: {
-    folderPath: string;
-    filename: string;
-  }): Promise<Readable | ReadableStream | NodeJS.ReadableStream | undefined>;
+    key: string
+
+  }): Promise<TRead | Readable | ReadableStream | NodeJS.ReadableStream | undefined>;
+
   write(params: {
     file: Buffer | Uint8Array | string;
-    name: string;
-    folder: string;
+    key: string;
     mimeType: ContentTypes | undefined;
-  }): Promise<void>;
+  }): Promise<TWrite>;
+
   move(params: {
-    from: { folderPath: string; filename: string };
-    to: { folderPath: string; filename: string };
-  }): Promise<void>;
+    from: { key: string };
+    to: { key: string };
+  }): Promise<TMove>;
+
   copy(params: {
-    from: { folderPath: string; filename?: string };
-    to: { folderPath: string; filename?: string };
-  }): Promise<void>;
+    from: { key: string };
+    to: { key: string };
+  }): Promise<TCopy>;
+
   download(params: {
-    from: { folderPath: string; filename?: string };
-    to: { folderPath: string; filename?: string };
-  }): Promise<void>;
+    from: { key: string };
+    to: { key: string };
+  }): Promise<TDownload>;
+
   checkFileExists(params: {
-    folderPath: string;
-    filename: string;
+    key: string
   }): Promise<boolean>;
-  checkFolderExists?(folderPath: string): Promise<boolean>;
+
   getSignedUrl?(params: {
-    folderPath: string;
-    filename: string;
+    key: string
     expiresInSeconds?: number;
-  }): Promise<string>;
+  }): TSignUrl;
+
+  getUrl?(params: {
+    key: string,
+    signed?: boolean;
+    expiresInSeconds?: number
+  }): TUrl;
 }

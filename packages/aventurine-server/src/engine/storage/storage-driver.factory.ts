@@ -1,12 +1,11 @@
-import { resolveAbsolutePath } from 'src/utils/resolve-absolute-path.util';
 import { AventurineConfigService } from '../aventurine-config/aventurine-config.service';
 import { DynamicFactoryBase } from '../aventurine-config/dynamic-factory.base';
 import { ConfigVariablesGroup } from '../aventurine-config/enums/config-variables-group.enum';
-import { LocalDriver } from './drivers/local.driver';
 import { StorageDriver } from './types/storage-driver.interface';
 import { StorageDriverOptions } from './types/storage.types';
 import { AzureDriver } from './drivers/azure.driver';
 import { Injectable } from '@nestjs/common';
+import { StorageException, StorageExceptionCode } from './types/storage.exception';
 
 @Injectable()
 export class StorageDriverFactory extends DynamicFactoryBase<StorageDriver> {
@@ -40,11 +39,6 @@ export class StorageDriverFactory extends DynamicFactoryBase<StorageDriver> {
     const storageType = this.configService.get('STORAGE_TYPE');
 
     switch (storageType) {
-      case StorageDriverOptions.LOCAL:
-        const storagePath = this.configService.get('STORAGE_LOCAL_PATH');
-        return new LocalDriver({
-          storagePath: resolveAbsolutePath(storagePath),
-        });
 
       case StorageDriverOptions.AZURE:
         const accountName = this.configService.get(
@@ -54,15 +48,18 @@ export class StorageDriverFactory extends DynamicFactoryBase<StorageDriver> {
         const containerName = this.configService.get(
           'STORAGE_AZURE_CONTAINER_NAME',
         );
-        const connString = this.configService.get(
-          'STORAGE_AZURE_CONNECTION_STRING',
-        );
+        const serviceUrl = this.configService.get("STORAGE_AZURE_SERVICE_URL")
+        const publicBaseUrl = this.configService.get("STORAGE_PUBLIC_BASE_URL")
         return new AzureDriver({
           accountName: accountName,
           accountKey: accountKey,
           container: containerName,
-          connectionString: connString,
+          serviceUrl: serviceUrl,
+          publicBaseUrl: publicBaseUrl
         });
+
+      default:
+        throw new StorageException(`The storage type of ${storageType} is not supported yet`, StorageExceptionCode.INVALID_CONFIGURATION)
     }
   }
 }

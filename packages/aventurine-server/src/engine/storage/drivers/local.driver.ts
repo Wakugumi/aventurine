@@ -13,7 +13,7 @@ export interface LocalDriverOptions {
   publicBaseUrl?: string;
 }
 
-export class LocalDriver implements StorageDriver {
+export class LocalDriver implements StorageDriver<Readable, void, void, void, void, void, string, string> {
   private options: LocalDriverOptions;
 
   constructor(options: LocalDriverOptions) {
@@ -26,14 +26,11 @@ export class LocalDriver implements StorageDriver {
 
   async write(params: {
     file: Buffer | Uint8Array | string;
-    name: string;
-    folder: string;
+    key: string;
     mimeType: string | undefined;
   }): Promise<void> {
     const filePath = join(
-      `${this.options.storagePath}/`,
-      params.folder,
-      params.name,
+      `${this.options.storagePath}/${params.key}`,
     );
 
     const folderPath = dirname(filePath);
@@ -42,19 +39,17 @@ export class LocalDriver implements StorageDriver {
   }
 
   async move(params: {
-    from: { folderPath: string; filename: string };
-    to: { folderPath: string; filename: string };
+    from: { key: string };
+    to: { key: string };
   }): Promise<void> {
     const fromPath = join(
       `${this.options.storagePath}/`,
-      params.from.folderPath,
-      params.from.filename,
+      params.from.key
     );
 
     const toPath = join(
       `${this.options.storagePath}/`,
-      params.to.folderPath,
-      params.to.filename,
+      params.to.key
     );
 
     await this.createFolder(dirname(toPath)); // ensure folder exists, create if none
@@ -74,24 +69,19 @@ export class LocalDriver implements StorageDriver {
 
   async copy(
     params: {
-      from: { folderPath: string; filename?: string };
-      to: { folderPath: string; filename?: string };
+      from: { key: string };
+      to: { key: string };
     },
     toInMemory: boolean = false,
   ): Promise<void> {
-    if (!params.from.filename && params.to.filename) {
-      throw new Error('Cannot copy folder to file');
-    }
     const fromPath = join(
       this.options.storagePath,
-      params.from.folderPath,
-      params.from.filename || '',
+      params.from.key,
     );
 
     const toPath = join(
       toInMemory ? '' : this.options.storagePath,
-      params.to.folderPath,
-      params.to.filename || '',
+      params.to.key,
     );
 
     await this.createFolder(dirname(toPath));
@@ -111,20 +101,18 @@ export class LocalDriver implements StorageDriver {
   }
 
   async download(params: {
-    from: { folderPath: string; filename?: string };
-    to: { folderPath: string; filename?: string };
+    from: { key: string };
+    to: { key: string };
   }): Promise<void> {
     await this.copy(params, true);
   }
 
   async checkFileExists(params: {
-    folderPath: string;
-    filename: string;
+    key: string
   }): Promise<boolean> {
     const filePath = join(
       this.options.storagePath,
-      params.folderPath,
-      params.filename,
+      params.key,
     );
 
     return existsSync(filePath);
@@ -136,18 +124,16 @@ export class LocalDriver implements StorageDriver {
   }
 
   async read(params: {
-    folderPath: string;
-    filename: string;
+    key: string
   }): Promise<Readable> {
     const filePath = join(
       this.options.storagePath,
-      params.folderPath,
-      params.filename,
+      params.key
     );
 
     if (!existsSync(filePath)) {
       throw new StorageException(
-        'FIle not found',
+        'File not found',
         StorageExceptionCode.FILE_NOT_FOUND,
       );
     }
@@ -157,7 +143,7 @@ export class LocalDriver implements StorageDriver {
     } catch (error) {
       if (error.code === 'ENOENT') {
         throw new StorageException(
-          'FIle not found',
+          'File not found',
           StorageExceptionCode.FILE_NOT_FOUND,
         );
       }
@@ -166,30 +152,26 @@ export class LocalDriver implements StorageDriver {
   }
 
   async delete(params: {
-    folderPath: string;
-    filename?: string;
+    key: string
   }): Promise<void> {
     const filePath = join(
       this.options.storagePath,
-      params.folderPath,
-      params.filename || '',
+      params.key
     );
 
     await fs.rm(filePath, { recursive: true });
   }
 
-  async getSignedUrl(params: {
-    folderPath: string;
-    filename: string;
+  getSignedUrl(params: {
+    key: string;
     expiresInSeconds?: number;
-  }): Promise<string> {
+  }): string {
     // For local storage, we just return the public URL
     // In a real implementation, you might want to generate a temporary token
     // or use a different approach for local file access control
     const filePath = join(
       this.options.storagePath,
-      params.folderPath,
-      params.filename,
+      params.key
     );
 
     // If publicBaseUrl is configured, use it

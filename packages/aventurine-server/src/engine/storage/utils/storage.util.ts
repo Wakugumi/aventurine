@@ -32,7 +32,6 @@ class AzureOptionsDto implements AzureBlobOptions {
   @IsString() accountName!: string;
   @IsString() container!: string;
   @IsOptional() @IsString() connectionString?: string;
-  @IsOptional() @IsString() sasToken?: string;
   @IsOptional() @IsString() publicBaseUrl?: string;
 }
 

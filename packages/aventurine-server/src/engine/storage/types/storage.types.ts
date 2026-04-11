@@ -6,6 +6,13 @@ export enum ContentTypes {
   WEBP = 'image/webp',
 }
 
+export interface SignedUrlResult {
+  url: string;
+  key: string;
+  fields?: Record<string, string>;
+  headers?: Record<string, string>;
+}
+
 export interface StoredFile {
   key: string; // remote key / relative path
   url?: string; // public URL (if available)
@@ -60,9 +67,9 @@ export interface S3Options {
 export interface AzureBlobOptions {
   accountName: string; // used to build public URL if desired
   container: string;
-  connectionString?: string; // recommended (managed identity also possible)
-  sasToken?: string; // optional: if using SAS
-  accountKey?: string;
+  accountKey: string;
+  serviceUrl: string; // Azure service URL
+
   publicBaseUrl?: string; // override URL building (e.g., CDN)
 }
 

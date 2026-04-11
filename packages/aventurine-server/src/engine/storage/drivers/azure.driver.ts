@@ -5,26 +5,23 @@ import {
   BlobSASPermissions,
   StorageSharedKeyCredential,
 } from '@azure/storage-blob';
-import { DefaultAzureCredential } from '@azure/identity';
 import { StorageDriver } from '../types/storage-driver.interface';
 import {
   StorageException,
   StorageExceptionCode,
 } from '../types/storage.exception';
-import { join } from 'path';
-import { isDefined } from 'class-validator';
-import { mkdir } from 'fs/promises';
 import { pipeline } from 'stream/promises';
 import { createWriteStream } from 'fs';
-import { AzureBlobOptions } from '../types/storage.types';
+import { AzureBlobOptions, SignedUrlResult } from '../types/storage.types';
 import { Logger } from '@nestjs/common';
+import { join } from 'path';
 
-export class AzureDriver implements StorageDriver {
+export class AzureDriver implements StorageDriver<NodeJS.ReadableStream> {
   private client: BlobServiceClient;
   private readonly logger = new Logger(AzureDriver.name);
   private container: ContainerClient;
   private options: AzureBlobOptions;
-  private sharedKeyCredential?: StorageSharedKeyCredential;
+  private sharedKeyCredential: StorageSharedKeyCredential;
 
   constructor(options: AzureBlobOptions) {
     if (!options.accountKey) {
@@ -35,12 +32,12 @@ export class AzureDriver implements StorageDriver {
     }
     this.options = options;
     this.sharedKeyCredential = new StorageSharedKeyCredential(
-      options.accountName, options.accountKey!
+      options.accountName, options.accountKey
     )
 
 
     this.client = new BlobServiceClient(
-      `https://${options.accountName}.blob.core.windows.net`,
+      this.options.serviceUrl,
       this.sharedKeyCredential
     );
 
@@ -48,13 +45,11 @@ export class AzureDriver implements StorageDriver {
   }
 
   async checkFileExists(params: {
-    folderPath: string;
-    filename: string;
+    key: string
   }): Promise<boolean> {
-    const filePath = `${params.folderPath}/${params.filename}`;
 
     try {
-      return await this.container.getBlockBlobClient(filePath).exists();
+      return await this.container.getBlockBlobClient(params.key).exists();
     } catch (error) {
       this.logger.error(error);
       return false;
@@ -62,23 +57,23 @@ export class AzureDriver implements StorageDriver {
   }
 
   async delete(params: {
-    folderPath: string;
-    filename?: string;
+    key: string
   }): Promise<void> {
-    const filePath = `${params.folderPath}/${params.filename}`;
 
     try {
-      await this.container.getBlobClient(filePath).deleteIfExists();
+      await this.container.getBlobClient(params.key).deleteIfExists();
     } catch (error) {
       throw error;
     }
   }
 
-  async read(params: { folderPath: string; filename: string }) {
-    const filePath = `${params.folderPath}/${params.filename}`;
+  async read(params:
+    {
+      key: string
+    }) {
 
     try {
-      const file = await this.container.getBlobClient(filePath).download();
+      const file = await this.container.getBlobClient(params.key).download();
 
       if (file.readableStreamBody === undefined) {
         throw new StorageException(
@@ -100,28 +95,23 @@ export class AzureDriver implements StorageDriver {
 
   async write(params: {
     file: Buffer | Uint8Array | string;
-    name: string;
-    folder: string;
+    key: string,
     mimeType: string | undefined;
   }): Promise<void> {
-    const filePath = `${params.folder}/${params.name}`;
 
     try {
       await this.container
-        .getBlockBlobClient(filePath)
+        .getBlockBlobClient(params.key)
         .upload(params.file, params.file.length);
     } catch (error) {
       throw error;
     }
   }
 
-  async move(params: {
-    from: { folderPath: string; filename: string };
-    to: { folderPath: string; filename: string };
-  }): Promise<void> {
-    const fromPath = join(params.from.folderPath, params.from.filename);
 
-    const fromBlob = this.container.getBlockBlobClient(fromPath);
+  async move(params: { from: { key: string; }; to: { key: string; }; }): Promise<void> {
+
+    const fromBlob = this.container.getBlockBlobClient(params.from.key);
     try {
       await this.copy(params);
       await fromBlob.delete();
@@ -130,15 +120,10 @@ export class AzureDriver implements StorageDriver {
     }
   }
 
-  async copy(params: {
-    from: { folderPath: string; filename?: string };
-    to: { folderPath: string; filename?: string };
-  }): Promise<void> {
-    const fromPath = join(params.from.folderPath, params.from.filename || '');
-    const toPath = join(params.to.folderPath, params.to.filename || '');
+  async copy(params: { from: { key: string; }; to: { key: string; }; }): Promise<void> {
 
-    const fromBlob = this.container.getBlockBlobClient(fromPath);
-    const toBlob = this.container.getBlockBlobClient(toPath);
+    const fromBlob = this.container.getBlockBlobClient(params.from.key);
+    const toBlob = this.container.getBlockBlobClient(params.to.key);
 
     // check if destination already exist
     if (await toBlob.exists())
@@ -161,44 +146,24 @@ export class AzureDriver implements StorageDriver {
     }
   }
 
-  async download(params: {
-    from: { folderPath: string; filename?: string };
-    to: { folderPath: string; filename?: string };
-  }): Promise<void> {
-    if (!params.from.filename && params.to.filename) {
-      throw new Error('Cannot copy folder to file');
-    }
-    if (!params.from.filename) {
-      throw new Error('Downloading whole dir not supported yet');
-    }
+  async download(params: { from: { key: string; }; to: { key: string; }; }): Promise<void> {
 
-    if (isDefined(params.from.filename)) {
-      try {
-        const dir = params.to.folderPath;
-        await mkdir(dir, { recursive: true });
-        const fileStream = await this.read({
-          folderPath: params.from.folderPath,
-          filename: params.from.filename!,
-        });
+    try {
+      const fileStream = await this.read({
+        key: params.from.key
+      });
 
-        const toPath = join(
-          params.to.folderPath,
-          params.to.filename || params.from.filename,
-        );
-        await pipeline(fileStream, createWriteStream(toPath));
-      } catch (error) {
-        throw error;
-      }
+      await pipeline(fileStream, createWriteStream(params.to.key));
+    } catch (error) {
+      throw error;
     }
   }
 
-  async getSignedUrl(params: {
-    folderPath: string;
-    filename: string;
+  getSignedUrl(params: {
+    key: string
     expiresInSeconds?: number;
-  }): Promise<string> {
-    const filePath = `${params.folderPath}/${params.filename}`;
-    const blobClient = this.container.getBlobClient(filePath);
+  }): SignedUrlResult {
+    const blobClient = this.container.getBlobClient(params.key);
 
     if (!this.sharedKeyCredential) {
       throw new StorageException(
@@ -215,8 +180,8 @@ export class AzureDriver implements StorageDriver {
 
       const sasOptions = {
         containerName: this.options.container,
-        blobName: filePath,
-        permissions: BlobSASPermissions.parse('r'), // read permission
+        blobName: params.key,
+        permissions: BlobSASPermissions.parse('cw'), // create and write
         startsOn: new Date(),
         expiresOn,
       };
@@ -226,13 +191,30 @@ export class AzureDriver implements StorageDriver {
         this.sharedKeyCredential,
       ).toString();
 
-      return `${blobClient.url}?${sasToken}`;
+      return {
+        url: `${blobClient.url}?${sasToken}`,
+        key: params.key,
+        headers: {
+          "x-ms-blob-type": "BlockBlob"
+        }
+      }
     } catch (error) {
       this.logger.error('Error generating signed URL:', error);
       throw new StorageException(
-        'Failed to generate signed URL',
-        StorageExceptionCode.FILE_NOT_FOUND,
+        `Failed to generate signed URL: ${error as string}`,
+        StorageExceptionCode.INVALID_PARAMETERS,
       );
     }
   }
+
+  getUrl(params: { key: string; signed?: boolean; expiresInSeconds?: number; }): string {
+
+
+    if (!this.options.publicBaseUrl)
+      throw new StorageException("This storage provider did not support public access", StorageExceptionCode.INVALID_CONFIGURATION)
+    return join(this.options.publicBaseUrl, params.key)
+
+  }
+
+
 }

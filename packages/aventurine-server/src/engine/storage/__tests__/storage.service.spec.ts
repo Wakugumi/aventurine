@@ -1,9 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { StorageDriver } from '../types/storage-driver.interface';
 import { StorageService } from '../services/storage.service';
 import { StorageDriverFactory } from '../storage-driver.factory';
+import { ContentTypes } from '../types/storage.types';
 import { STORAGE_OPTIONS } from '../types/storage.tokens';
-import { ContentTypes, UploadOptions } from '../types/storage.types';
 
 describe('StorageService', () => {
   let service: StorageService;
@@ -24,6 +23,12 @@ describe('StorageService', () => {
           provide: StorageDriverFactory,
           useValue: mockStorageFactory,
         },
+        {
+          provide: STORAGE_OPTIONS,
+          useValue: {
+            publicBaseUrl: "/"
+          }
+        }
       ],
     }).compile();
 
@@ -36,7 +41,7 @@ describe('StorageService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('storage operations', async () => {
+  describe('storage operations', () => {
     let mockDriver: any;
 
     beforeEach(async () => {
@@ -54,27 +59,26 @@ describe('StorageService', () => {
       mockStorageFactory.getCurrentDriver.mockReturnValue(mockDriver);
     });
 
-    describe('write operation', async () => {
+    describe('write operation', () => {
       it('should write a file', async () => {
         const params = {
           file: 'test',
-          name: 'test',
-          folder: 'test',
+          key: 'test',
           mimeType: ContentTypes.JPEG,
         };
 
         mockDriver.write.mockResolvedValue(undefined);
 
+
         await service.write(params);
+
         expect(factory.getCurrentDriver).toHaveBeenCalled();
-        expect(service.write).toHaveBeenCalledWith(params);
       });
 
       it('should return error', async () => {
         const params = {
           file: 'test',
-          name: 'test',
-          folder: 'test',
+          key: 'test',
           mimeType: ContentTypes.JPEG,
         };
 
@@ -84,7 +88,6 @@ describe('StorageService', () => {
         await expect(service.write(params)).rejects.toThrow(error.message);
 
         expect(factory.getCurrentDriver).toHaveBeenCalled();
-        expect(service.write).toHaveBeenCalledWith(params);
       });
     });
   });

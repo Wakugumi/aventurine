@@ -1,5 +1,5 @@
 import { AzureDriver } from './azure.driver';
-import { AzureBlobOptions } from '../types/storage.types';
+import { AzureBlobOptions, SignedUrlResult } from '../types/storage.types';
 import {
   StorageException,
   StorageExceptionCode,
@@ -10,10 +10,9 @@ import {
   BlockBlobClient,
   BlobClient,
   StorageSharedKeyCredential,
-  BlobDownloadResponseParsed,
 } from '@azure/storage-blob';
-import { DefaultAzureCredential } from '@azure/identity';
 import { Readable } from 'stream';
+import { join } from 'path';
 
 // Mock Azure SDK
 jest.mock('@azure/storage-blob');
@@ -55,8 +54,7 @@ describe.only('AzureDriver', () => {
       accountName: 'testaccount',
       accountKey: 'testkey',
       container: 'testcontainer',
-      connectionString:
-        'DefaultEndpointsProtocol=https;AccountName=testaccount;AccountKey=testkey;EndpointSuffix=core.windows.net',
+      serviceUrl: 'https://windows.blob.core.net',
       publicBaseUrl: 'https://cdn.example.com',
     };
 
@@ -71,30 +69,26 @@ describe.only('AzureDriver', () => {
     mockContainerClient.getBlobClient.mockReturnValue(mockBlobClient);
 
     driver = new AzureDriver(options);
+
+
+
+    jest.mock('@azure/storage-blob', () => {
+      return {
+        BlobServiceClient: jest.fn().mockImplementation(() => ({
+          getContainerClient: jest.fn().mockReturnValue({
+            uploadBlockBlob: jest.fn(),
+            deleteBlob: jest.fn(),
+          }),
+        })),
+
+        StorageSharedKeyCredential: jest.fn().mockImplementation(() => ({
+          key: 'mock',
+        })),
+      };
+    });
   });
 
   describe('constructor', () => {
-    it('should initialize with connection string', () => {
-      expect(BlobServiceClient).toHaveBeenCalledWith(options.connectionString);
-      expect(mockClient.getContainerClient).toHaveBeenCalledWith(
-        'testcontainer',
-      );
-    });
-
-    it('should initialize with managed identity when no connection string', () => {
-      const optionsWithoutConnectionString = {
-        ...options,
-        connectionString: undefined,
-      };
-
-      new AzureDriver(optionsWithoutConnectionString);
-
-      expect(BlobServiceClient).toHaveBeenCalledWith(
-        'https://testaccount.blob.core.windows.net',
-        expect.any(DefaultAzureCredential),
-      );
-    });
-
     it('should initialize shared key credential when account key provided', () => {
       expect(StorageSharedKeyCredential).toHaveBeenCalledWith(
         'testaccount',
@@ -103,22 +97,24 @@ describe.only('AzureDriver', () => {
     });
   });
 
+  let mockKey = "MOCKKEY"
+
   describe('checkFileExists', () => {
     it('should return true when file exists', async () => {
-      const params = { folderPath: 'folder', filename: 'file.txt' };
+      const params = { key: mockKey };
       mockBlockBlobClient.exists.mockResolvedValueOnce(true);
 
       const result = await driver.checkFileExists(params);
 
       expect(mockContainerClient.getBlockBlobClient).toHaveBeenCalledWith(
-        'folder/file.txt',
+        mockKey,
       );
       expect(mockBlockBlobClient.exists).toHaveBeenCalled();
       expect(result).toBe(true);
     });
 
     it('should return false when file does not exist', async () => {
-      const params = { folderPath: 'folder', filename: 'file.txt' };
+      const params = { key: mockKey };
       mockBlockBlobClient.exists.mockResolvedValueOnce(false);
 
       const result = await driver.checkFileExists(params);
@@ -127,7 +123,8 @@ describe.only('AzureDriver', () => {
     });
 
     it('should return false on error', async () => {
-      const params = { folderPath: 'folder', filename: 'file.txt' };
+
+      const params = { key: mockKey };
       mockBlockBlobClient.exists.mockRejectedValueOnce(
         new Error('Azure error'),
       );
@@ -140,19 +137,22 @@ describe.only('AzureDriver', () => {
 
   describe('delete', () => {
     it('should delete file successfully', async () => {
-      const params = { folderPath: 'folder', filename: 'file.txt' };
+
+      const params = { key: mockKey };
       mockBlobClient.deleteIfExists.mockResolvedValueOnce({} as any);
 
       await driver.delete(params);
 
       expect(mockContainerClient.getBlobClient).toHaveBeenCalledWith(
-        'folder/file.txt',
+        mockKey
       );
+
       expect(mockBlobClient.deleteIfExists).toHaveBeenCalled();
+
     });
 
     it('should handle delete errors', async () => {
-      const params = { folderPath: 'folder', filename: 'file.txt' };
+      const params = { key: mockKey };
       const error = new Error('Delete failed');
       mockBlobClient.deleteIfExists.mockRejectedValueOnce(error);
 
@@ -162,7 +162,8 @@ describe.only('AzureDriver', () => {
 
   describe('read', () => {
     it('should return readable stream', async () => {
-      const params = { folderPath: 'folder', filename: 'file.txt' };
+
+      const params = { key: mockKey };
       const mockStream = new Readable();
       mockBlobClient.download.mockResolvedValueOnce({
         readableStreamBody: mockStream,
@@ -171,14 +172,15 @@ describe.only('AzureDriver', () => {
       const result = await driver.read(params);
 
       expect(mockContainerClient.getBlobClient).toHaveBeenCalledWith(
-        'folder/file.txt',
+        mockKey
       );
+
       expect(mockBlobClient.download).toHaveBeenCalled();
       expect(result).toBe(mockStream);
     });
 
     it('should throw StorageException when stream is undefined', async () => {
-      const params = { folderPath: 'folder', filename: 'file.txt' };
+      const params = { key: mockKey };
       (mockContainerClient.getBlobClient as jest.Mock).mockReturnValue({
         download: jest
           .fn()
@@ -190,7 +192,7 @@ describe.only('AzureDriver', () => {
     });
 
     it('should handle file not found error', async () => {
-      const params = { folderPath: 'folder', filename: 'file.txt' };
+      const params = { key: mockKey };
       const error = new Error('File not found') as any;
       error.code = 'ENOENT';
       (mockContainerClient.getBlobClient as jest.Mock).mockReturnValue({
@@ -202,7 +204,7 @@ describe.only('AzureDriver', () => {
     });
 
     it('should rethrow other errors', async () => {
-      const params = { folderPath: 'folder', filename: 'file.txt' };
+      const params = { key: mockKey };
       const error = new Error('Azure error');
 
       (mockContainerClient.getBlobClient as jest.Mock).mockReturnValue({
@@ -217,8 +219,7 @@ describe.only('AzureDriver', () => {
     it('should upload file successfully', async () => {
       const params = {
         file: Buffer.from('test content'),
-        name: 'file.txt',
-        folder: 'folder',
+        key: mockKey,
         mimeType: 'text/plain',
       };
 
@@ -227,7 +228,7 @@ describe.only('AzureDriver', () => {
       await driver.write(params);
 
       expect(mockContainerClient.getBlockBlobClient).toHaveBeenCalledWith(
-        'folder/file.txt',
+        mockKey
       );
       expect(mockBlockBlobClient.upload).toHaveBeenCalledWith(
         params.file,
@@ -238,8 +239,7 @@ describe.only('AzureDriver', () => {
     it('should handle upload errors', async () => {
       const params = {
         file: 'string content',
-        name: 'file.txt',
-        folder: 'folder',
+        key: mockKey,
         mimeType: undefined,
       };
 
@@ -250,11 +250,12 @@ describe.only('AzureDriver', () => {
     });
   });
 
+  let mockKey2 = mockKey + '2'
   describe('move', () => {
     it('should move file successfully', async () => {
       const params = {
-        from: { folderPath: 'folder1', filename: 'file.txt' },
-        to: { folderPath: 'folder2', filename: 'newfile.txt' },
+        from: { key: mockKey },
+        to: { key: mockKey2 },
       };
 
       const copySpy = jest
@@ -270,10 +271,9 @@ describe.only('AzureDriver', () => {
 
     it('should handle move errors', async () => {
       const params = {
-        from: { folderPath: 'folder1', filename: 'file.txt' },
-        to: { folderPath: 'folder2', filename: 'newfile.txt' },
+        from: { key: mockKey },
+        to: { key: mockKey2 },
       };
-
       jest
         .spyOn(driver, 'copy')
         .mockRejectedValueOnce(new Error('Copy failed'));
@@ -285,8 +285,8 @@ describe.only('AzureDriver', () => {
   describe('copy', () => {
     it('should copy file successfully', async () => {
       const params = {
-        from: { folderPath: 'folder1', filename: 'file.txt' },
-        to: { folderPath: 'folder2', filename: 'newfile.txt' },
+        from: { key: mockKey },
+        to: { key: mockKey2 },
       };
 
       // Mock the from and to blob clients
@@ -317,9 +317,10 @@ describe.only('AzureDriver', () => {
 
     it('should throw error when destination file already exists', async () => {
       const params = {
-        from: { folderPath: 'folder1', filename: 'file.txt' },
-        to: { folderPath: 'folder2', filename: 'newfile.txt' },
+        from: { key: mockKey },
+        to: { key: mockKey2 },
       };
+
 
       const toBlobClient = {
         ...mockBlobClient,
@@ -336,9 +337,11 @@ describe.only('AzureDriver', () => {
 
     it('should throw error when source file does not exist', async () => {
       const params = {
-        from: { folderPath: 'folder1', filename: 'file.txt' },
-        to: { folderPath: 'folder2', filename: 'newfile.txt' },
+        from: { key: mockKey },
+        to: { key: mockKey2 },
       };
+
+
 
       const fromBlobClient = {
         ...mockBlobClient,
@@ -359,80 +362,56 @@ describe.only('AzureDriver', () => {
   });
 
   describe('download', () => {
-    it('should throw error for downloading whole directory', async () => {
-      const params = {
-        from: { folderPath: 'folder1' },
-        to: { folderPath: '/local/path' },
-      };
-
-      await expect(driver.download(params)).rejects.toThrow(
-        'Downloading whole dir not supported yet',
-      );
-    });
-
-    it('should throw error when copying folder to file', async () => {
-      const params = {
-        from: { folderPath: 'folder1' },
-        to: { folderPath: '/local/path', filename: 'file.txt' },
-      };
-
-      await expect(driver.download(params)).rejects.toThrow(
-        'Cannot copy folder to file',
-      );
-    });
-
     it('should download file successfully', async () => {
       const params = {
-        from: { folderPath: 'folder1', filename: 'file.txt' },
-        to: { folderPath: '/local/path', filename: 'localfile.txt' },
+        from: { key: mockKey },
+        to: { key: mockKey2 },
       };
+
+
 
       const mockStream = new Readable();
       jest.spyOn(driver, 'read').mockResolvedValueOnce(mockStream);
 
       // Mock fs operations
-      const { mkdir } = require('fs/promises');
       const { pipeline } = require('stream/promises');
       const { createWriteStream } = require('fs');
 
-      mkdir.mockResolvedValueOnce(undefined);
       pipeline.mockResolvedValueOnce(undefined);
       createWriteStream.mockReturnValueOnce({} as any);
 
       await driver.download(params);
 
-      expect(mkdir).toHaveBeenCalledWith('/local/path', { recursive: true });
       expect(pipeline).toHaveBeenCalled();
     });
 
     it('should use source filename when destination filename not provided', async () => {
       const params = {
-        from: { folderPath: 'folder1', filename: 'file.txt' },
-        to: { folderPath: '/local/path' },
+        from: { key: mockKey },
+        to: { key: mockKey2 },
       };
+
+
 
       const mockStream = new Readable();
       jest.spyOn(driver, 'read').mockResolvedValueOnce(mockStream);
 
-      const { mkdir } = require('fs/promises');
       const { pipeline } = require('stream/promises');
       const { createWriteStream } = require('fs');
 
-      mkdir.mockResolvedValueOnce(undefined);
       pipeline.mockResolvedValueOnce(undefined);
       createWriteStream.mockReturnValueOnce({} as any);
 
       await driver.download(params);
 
-      expect(createWriteStream).toHaveBeenCalledWith('/local/path/file.txt');
+      expect(createWriteStream).toHaveBeenCalledWith(params.to.key);
     });
   });
 
   describe('getSignedUrl', () => {
-    it('should generate signed URL successfully', async () => {
+    it('should generate signed URL successfully', () => {
       const params = {
-        folderPath: 'folder',
-        filename: 'file.txt',
+        key: mockKey,
         expiresInSeconds: 3600,
       };
 
@@ -442,63 +421,50 @@ describe.only('AzureDriver', () => {
         toString: () => 'sastoken=abc123',
       });
 
-      const result = await driver.getSignedUrl(params);
+      const result = driver.getSignedUrl(params);
 
-      expect(result).toBe(
-        'https://test.blob.core.windows.net/container/path/file.txt?sastoken=abc123',
+      expect(result).toStrictEqual(
+        { url: 'https://test.blob.core.windows.net/container/path/file.txt?sastoken=abc123', headers: { 'x-ms-blob-type': 'BlockBlob' }, key: params.key } as SignedUrlResult,
       );
     });
 
-    it('should throw error when account key not provided', async () => {
-      const driverWithoutKey = new AzureDriver({
-        ...options,
-        accountKey: undefined,
-      });
-
+    it('should handle SAS generation errors', () => {
       const params = {
-        folderPath: 'folder',
-        filename: 'file.txt',
+        key: mockKey,
+        expiresInSeconds: 3600,
       };
 
-      await expect(driverWithoutKey.getSignedUrl(params)).rejects.toThrow(
-        StorageException,
-      );
-      await expect(driverWithoutKey.getSignedUrl(params)).rejects.toThrow(
-        'Account key is required for generating signed URLs',
-      );
-    });
 
-    it('should handle SAS generation errors', async () => {
-      const params = {
-        folderPath: 'folder',
-        filename: 'file.txt',
-      };
 
       const { generateBlobSASQueryParameters } = require('@azure/storage-blob');
       generateBlobSASQueryParameters.mockImplementation(() => {
         throw new Error('SAS generation failed');
       });
 
-      await expect(driver.getSignedUrl(params)).rejects.toThrow(
-        StorageException,
-      );
-      await expect(driver.getSignedUrl(params)).rejects.toThrow(
-        'Failed to generate signed URL',
-      );
+      expect.assertions(2);
+
+      try {
+        driver.getSignedUrl(params)
+
+      } catch (error) {
+        expect(error).toBeInstanceOf(StorageException);
+        expect((error as StorageException).code).toBe(StorageExceptionCode.INVALID_PARAMETERS)
+      }
     });
 
-    it('should use default expiration when not provided', async () => {
+    it('should use default expiration when not provided', () => {
       const params = {
-        folderPath: 'folder',
-        filename: 'file.txt',
+        key: mockKey,
       };
+
+
 
       const { generateBlobSASQueryParameters } = require('@azure/storage-blob');
       generateBlobSASQueryParameters.mockReturnValue({
         toString: () => 'sastoken=abc123',
       });
 
-      await driver.getSignedUrl(params);
+      driver.getSignedUrl(params);
 
       expect(generateBlobSASQueryParameters).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -508,4 +474,15 @@ describe.only('AzureDriver', () => {
       );
     });
   });
+
+  describe('public url', () => {
+    it('should return public url if supported', () => {
+      let params = { key: mockKey }
+
+      expect(driver.getUrl(params)).toBe(join(options.publicBaseUrl!, params.key))
+
+
+
+    })
+  })
 });

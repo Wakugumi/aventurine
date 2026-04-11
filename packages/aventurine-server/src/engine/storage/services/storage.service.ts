@@ -1,9 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { STORAGE_OPTIONS, STORAGE_STRATEGY } from '../types/storage.tokens';
-import { ContentTypes, GetUrlOptions } from '../types/storage.types';
+import { ContentTypes, GetUrlOptions, SignedUrlResult } from '../types/storage.types';
 import { StorageDriver } from '../types/storage-driver.interface';
 import { Readable } from 'stream';
 import { StorageDriverFactory } from '../storage-driver.factory';
+import { StorageException, StorageExceptionCode } from '../types/storage.exception';
 
 @Injectable()
 export class StorageService implements StorageDriver {
@@ -25,20 +26,8 @@ export class StorageService implements StorageDriver {
     };
   }
 
-  private async streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
-    const chunks: Buffer[] = [];
-    return new Promise<Buffer>((resolve, reject) => {
-      stream.on('data', (chunk) =>
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)),
-      );
-      stream.on('end', () => resolve(Buffer.concat(chunks)));
-      stream.on('error', reject);
-    });
-  }
-
   read(params: {
-    folderPath: string;
-    filename: string;
+    key: string
   }): Promise<Readable | ReadableStream | NodeJS.ReadableStream | undefined> {
     const driver = this.storageFactory.getCurrentDriver();
     return driver.read(params);
@@ -46,82 +35,75 @@ export class StorageService implements StorageDriver {
 
   write(params: {
     file: Buffer | Uint8Array | string;
-    name: string;
-    folder: string;
+    key: string;
     mimeType: ContentTypes | undefined;
-  }) {
+  }): Promise<void> {
     const driver = this.storageFactory.getCurrentDriver();
     return driver.write(params);
   }
 
   async delete(params: {
-    folderPath: string;
-    filename?: string;
+    key: string
   }): Promise<void> {
     await this.driver.delete(params);
   }
 
-  async exists(key: string): Promise<boolean> {
-    const { folder, name } = this.splitKey(key);
-    return this.driver.checkFileExists({
-      folderPath: folder,
-      filename: name,
-    });
-  }
-
   move(params: {
-    from: { folderPath: string; filename: string };
-    to: { folderPath: string; filename: string };
+    from: { key: string },
+    to: { key: string }
   }): Promise<void> {
     const driver = this.storageFactory.getCurrentDriver();
     return driver.move(params);
   }
 
   copy(params: {
-    from: { folderPath: string; filename?: string };
-    to: { folderPath: string; filename?: string };
-  }) {
+    from: { key: string },
+    to: {
+      key: string
+    }
+  }): Promise<void> {
     const driver = this.storageFactory.getCurrentDriver();
     return driver.copy(params);
   }
 
   download(params: {
-    from: { folderPath: string; filename?: string };
-    to: { folderPath: string; filename?: string };
+    from: { key: string };
+    to: { key: string };
   }) {
     const driver = this.storageFactory.getCurrentDriver();
     return driver.download(params);
   }
 
   checkFileExists(params: {
-    folderPath: string;
-    filename: string;
+    key: string
   }): Promise<boolean> {
     const driver = this.storageFactory.getCurrentDriver();
     return driver.checkFileExists(params);
   }
 
-  async getUrl(
-    options: GetUrlOptions & { key: string },
-  ): Promise<string | undefined> {
-    const { key, signed, expiresInSeconds } = options;
+  getSignedUrl(params: { key: string; expiresInSeconds?: number; }): SignedUrlResult {
+    if (this.driver.getSignedUrl)
+      return this.driver.getSignedUrl(params)
 
-    if (signed && this.driver.getSignedUrl) {
-      const { folder, name } = this.splitKey(key);
-      return this.driver.getSignedUrl({
-        folderPath: folder,
-        filename: name,
-        expiresInSeconds,
-      });
-    }
-
-    return this.buildPublicUrl(key);
+    throw new StorageException("This storage does not support signed url", StorageExceptionCode.INVALID_CONFIGURATION)
   }
 
-  private buildPublicUrl(key: string): string | undefined {
+  getUrl(
+    params: {
+      key: string,
+      signed?: boolean,
+
+      expiresInSeconds?: number;
+    }
+
+  ): string {
+    return this.buildPublicUrl(params.key);
+  }
+
+  private buildPublicUrl(key: string): string {
     const publicBaseUrl: string | undefined =
       this.options?.options?.publicBaseUrl;
-    if (!publicBaseUrl) return undefined;
+    if (!publicBaseUrl) throw new StorageException("This storage provider does not support public access", StorageExceptionCode.INVALID_CONFIGURATION)
     const normalizedKey = key.replace(/^\/+/, '');
     return `${publicBaseUrl.replace(/\/$/, '')}/${normalizedKey}`;
   }
