@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Storage Admin Test</title>
+  <style>
+    body {
+      font-family: Inter, Arial, sans-serif;
+      margin: 24px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .card {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #111827;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 18px;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 6px;
+      font-weight: 600;
+    }
+
+    input,
+    select,
+    button,
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: #0b1220;
+      color: #e2e8f0;
+      padding: 10px;
+    }
+
+    button {
+      cursor: pointer;
+      background: #2563eb;
+      border-color: #2563eb;
+      margin-top: 14px;
+    }
+
+    button.secondary {
+      background: #334155;
+      border-color: #334155;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .muted {
+      color: #94a3b8;
+      font-size: 12px;
+    }
+
+    pre {
+      background: #020617;
+      border: 1px solid #334155;
+      padding: 10px;
+      border-radius: 8px;
+      max-height: 320px;
+      overflow: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>Storage Admin Test Page</h1>
+    <p class="muted">Flow: create upload instruction → upload blob to signed URL → confirm upload in file-store.</p>
+
+    <div class="row">
+      <div>
+        <label for="referenceId">Reference Id</label>
+        <input id="referenceId" placeholder="ex: product-123" />
+      </div>
+      <div>
+        <label for="context">Context</label>
+        <select id="context">__FILE_CONTEXT_OPTIONS__</select>
+      </div>
+    </div>
+
+    <label for="fileInput">File</label>
+    <input id="fileInput" type="file" />
+
+    <button id="runBtn">Run upload test</button>
+    <button id="createOnlyBtn" class="secondary" type="button">Create instruction only</button>
+
+    <label for="result">Result</label>
+    <pre id="result">Ready.</pre>
+  </div>
+
+  <script>
+    const resultEl = document.getElementById('result');
+    const referenceIdEl = document.getElementById('referenceId');
+    const contextEl = document.getElementById('context');
+    const fileInputEl = document.getElementById('fileInput');
+    const runBtn = document.getElementById('runBtn');
+    const createOnlyBtn = document.getElementById('createOnlyBtn');
+
+    if (!referenceIdEl.value) {
+      referenceIdEl.value = crypto.randomUUID();
+    }
+
+    const unwrap = (payload) => payload?.data ?? payload;
+
+    const print = (value) => {
+      if (typeof value === 'string') {
+        resultEl.textContent = value;
+        return;
+      }
+      resultEl.textContent = JSON.stringify(value, null, 2);
+    };
+
+    async function createInstruction() {
+      const file = fileInputEl.files?.[0];
+      if (!file) throw new Error('Please choose a file.');
+
+
+      console.log(JSON.stringify({
+        referenceId: referenceIdEl.value,
+        fileName: file.name,
+        context: contextEl.value
+      }))
+
+      const response = await fetch('/filestore-test/create-upload', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          referenceId: referenceIdEl.value,
+          fileName: file.name,
+          context: contextEl.value
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(JSON.stringify(data));
+      return unwrap(data);
+    }
+
+    async function uploadToStorage(credentials, file) {
+      if (!credentials?.url) throw new Error('Missing signed URL credentials.');
+
+      if (credentials.fields && Object.keys(credentials.fields).length > 0) {
+        const form = new FormData();
+        Object.entries(credentials.fields).forEach(([k, v]) => form.append(k, String(v)));
+        form.append('file', file);
+        const res = await fetch(credentials.url, {method: 'POST', body: form});
+        if (!res.ok) throw new Error('Blob upload failed with status ' + res.status);
+        return;
+      }
+
+      const headers = credentials.headers || {};
+      const res = await fetch(credentials.url, {
+        method: 'PUT',
+        headers,
+        body: file
+      });
+
+      if (!res.ok) throw new Error('Blob upload failed with status ' + res.status);
+    }
+
+    async function confirm(fileId, fileKey) {
+      const res = await fetch('/file/confirm/' + encodeURIComponent(fileId), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          fileId: fileId,
+          fileKey: fileKey
+        })
+
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(JSON.stringify(data));
+      return unwrap(data);
+    }
+
+    createOnlyBtn.addEventListener('click', async () => {
+      try {
+        print('Creating upload instruction...');
+        const instruction = await createInstruction();
+        print({message: 'Instruction created', instruction});
+      } catch (error) {
+        print({error: String(error?.message || error)});
+      }
+    });
+
+    runBtn.addEventListener('click', async () => {
+      try {
+        const file = fileInputEl.files?.[0];
+        if (!file) throw new Error('Please choose a file.');
+
+        print('Creating upload instruction...');
+        const instruction = await createInstruction();
+
+        print({step: 'uploading', instruction});
+        await uploadToStorage(instruction.credentials, file);
+
+        print({step: 'confirming', fileId: instruction.fileId, fileKey: instruction.fileKey});
+        const confirmed = await confirm(instruction.fileId, instruction.fileKey);
+
+        print({step: 'done', instruction, confirmed});
+      } catch (error) {
+        print({error: String(error?.message || error)});
+      }
+    });
+  </script>
+</body>
+
+</html>
