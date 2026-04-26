@@ -1,3 +1,4 @@
 export enum FileEvents {
-  UPLOADED = 'file.uploaded'
+  UPLOADED = 'file.uploaded',
+  DELETED = 'file.deleted'
 }

@@ -14,7 +14,7 @@ export class FileStoreJobs {
     @InjectRepository(FileStore) private readonly repo: Repository<FileStore>) { }
 
   @Process(FileStoreQueue.CLEANUP)
-  async cleanup(job: Job<unknown>) {
+  async cleanup() {
 
     const now = new Date();
 
@@ -36,7 +36,7 @@ export class FileStoreJobs {
     });
 
     for (const file of toDelete) {
-      await this.fileService.handleDeleteFile({ fileId: file.id, referenceId: file.referenceId })
+      await this.fileService.immediateDeleteFile({ fileId: file.id, referenceId: file.referenceId })
     }
 
     return { pending: pending.length };

@@ -117,7 +117,7 @@ describe('FileStoreService', () => {
   });
 
   // ======= Handle delete file ================
-  it('handleDeleteFile ok', async () => {
+  it('immediateDeleteFile ok', async () => {
     let mockData = {
       id: '1',
       referenceId: 'ref1',
@@ -129,7 +129,7 @@ describe('FileStoreService', () => {
 
     repo.delete.mockResolvedValueOnce({} as any);
 
-    const returned = await service.handleDeleteFile({ referenceId: 'ref1', fileId: '1' })
+    const returned = await service.immediateDeleteFile({ referenceId: 'ref1', fileId: '1' })
 
 
     expect(storage.delete).toHaveBeenCalledWith({ key: mockData.key })
@@ -137,14 +137,14 @@ describe('FileStoreService', () => {
     expect(returned).toEqual(mockData)
   });
 
-  it('handleDeleteFile error when no record match', async () => {
+  it('immediateDeleteFile error when no record match', async () => {
     repo.findOneBy.mockResolvedValueOnce(null);
 
     expect.assertions(2);
 
     try {
-      await service.handleDeleteFile({ referenceId: "1", fileId: "1" })
     } catch (error) {
+      await service.immediateDeleteFile({ referenceId: "1", fileId: "1" })
       expect(error).toBeInstanceOf(FileStoreException);
       expect((error as FileStoreException).code).toEqual(FileStoreExceptionCode.FILE_RECORD_NOT_FOUND)
     }

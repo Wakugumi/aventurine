@@ -77,17 +77,21 @@ export class FileStoreService {
     }
   }
 
+  /**
+  * File is marked with soft delete
+  * Deletion issued by running cron job
+  */
   async markDeleteFile(params: { fileId: string, referenceId: string }) {
-    if (!await this.fileRepo.existsBy({ id: params.fileId, referenceId: params.referenceId })) throw new FileStoreException("No File record found", FileStoreExceptionCode.FILE_RECORD_NOT_FOUND)
+    const file = await this.fileRepo.findOneBy({ id: params.fileId });
+    if (!file) throw new FileStoreException("No File record found", FileStoreExceptionCode.FILE_RECORD_NOT_FOUND)
     await this.fileRepo.update({ id: params.fileId, referenceId: params.referenceId }, { status: FileStoreStatus.DELETE })
+
+
+    this.eventEmitter.emit(FileEvents.DELETED, new FileUploadedEvent(file.id, file.context));
   }
 
 
-  /**
-  * referenceId is assume aligned with the entity corresponding to the file's context
-  * If it not match, that assuming the delete request is not in the same context 
-  */
-  async handleDeleteFile(params: { referenceId: string, fileId: string }) {
+  async immediateDeleteFile(params: { referenceId: string, fileId: string }) {
     const fileRecord = await this.fileRepo.findOneBy({ id: params.fileId, referenceId: params.referenceId })
 
     if (!fileRecord)
@@ -97,6 +101,8 @@ export class FileStoreService {
 
 
     await this.fileRepo.delete({ id: fileRecord.id })
+
+    this.eventEmitter.emit(FileEvents.DELETED, new FileUploadedEvent(fileRecord.id, fileRecord.context));
 
     return fileRecord
   }
