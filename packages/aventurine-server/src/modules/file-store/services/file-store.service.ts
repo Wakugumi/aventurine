@@ -5,7 +5,7 @@ import { StorageService } from "src/engine/storage/services/storage.service";
 import { FileContext } from "../enums/file-context.enum";
 import { InjectRepository } from "@nestjs/typeorm";
 import { FileStore } from "../file-store.entity";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { ResolveContentType } from "../utils/content-type-resolver.util";
 import { FileStoreStatus } from "@aventurine/shared";
 import { FileStoreException, FileStoreExceptionCode } from "../file-store.exception";
@@ -115,6 +115,18 @@ export class FileStoreService {
 
     return fileRecord;
   }
+
+  async getBulkFiles(params: { referenceIds: string[], context: FileContext, status: FileStoreStatus }): Promise<FileStore[]> {
+    return await this.fileRepo.find({
+      where: {
+        context: params.context,
+        referenceId: In(params.referenceIds),
+        status: params.status
+      }
+    });
+
+  }
+
 
 
   getPublicUrl(fileKey: string) {

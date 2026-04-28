@@ -6,6 +6,10 @@ import { FileContext } from "./enums/file-context.enum";
 @Index("IDX_FILE_STORE_REFID", ['referenceId'], { unique: false })
 @Index("IDX_FILE_STORE_REF_CONTEXT", ['referenceId', 'context'], { unique: false })
 @Index("IDX_FILE_STORE_CREATED_AT", ['createdAt'], { unique: false })
+
+@Index("IDX_FILE_STORE_PRODUCT", ['referenceId'], {
+  where: `"context" = 'product' AND "status" = 'active'`
+})
 export class FileStore {
   @PrimaryGeneratedColumn('uuid')
   id: string;
